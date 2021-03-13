@@ -23,6 +23,15 @@ const Tour = require('../models/tourModel');
 //   next()
 // }
 
+exports.aliasTopTours = (req, res, next) => {
+  req.query.limit = '5'
+  req.query.sort = '-ratingsAverage,price'
+  req.query.fields = 'name,price,ratingsAverage,summary,difficulty'
+  next()
+}
+
+
+
 exports.getAllTours = async (req, res) => {
   console.log(req.query);
   try {
@@ -61,10 +70,24 @@ exports.getAllTours = async (req, res) => {
       query = query.select('-__v') // Everything except __v  => başında eksi olunca bu anlama geliyor.
     }
 
+    // 4) PAGINATION
+    const page = req.query.page * 1 || 1;
+    const limit = req.query.limit * 1 || 100
+    const skip = (page - 1) * limit
 
+    // page=2&limit=10  => 1-10 page 1, 11-20 page 2, 21-30 page 3  
+    // eğer sayfa 3 e gideceksek (21-30) ilk 20 kayıdı skip etmemiz lazım bu yüzden => skip(20)  
+    query = query.skip(skip).limit(limit) 
+
+    if(req.query.page) {
+      const numTours = await Tour.countDocuments()
+      if(skip >= numTours) throw new Error('This page does not exist!')
+    }
 
     // EXECUTE QUERY
     const tours = await query;
+    // query.sort().select().skip().limit()
+    
 
     // const query =  Tour.find()
     // .where('duration').equals(5)
